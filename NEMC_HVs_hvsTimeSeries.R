@@ -23,7 +23,7 @@ df_ben = read.csv('benthicdata_PR.csv') %>%
 #######make HVs 
 
 
-reps = 100
+reps = 1
 
 set.seed(14)
 df_NEMC = df_ben |> 
