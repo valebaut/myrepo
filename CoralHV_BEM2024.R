@@ -27,7 +27,7 @@ rename(site= SITE.NAME) |>
   filter(pc > 0) 
 
 # make the hvs for random cover and avg traits----
-reps = 100
+reps = 1
 
 set.seed(14)
 df = df_ben |> 
@@ -87,7 +87,7 @@ df_reg <- expand.grid(YEAR1 = unique_years, YEAR2 = unique_years,
 
 
 df_reg = df_reg[!duplicated(t(apply(df_reg,1,sort))),] %>% 
-  filter(!(YEAR1 == YEAR2) & !(site1 == site2))  # Filtering based on both YEAR and site
+  filter(!(YEAR1 == YEAR2))  # Filtering based on year
 
 df_iterations = tibble(YEAR1 = rep(df_reg$YEAR1, times = reps),
                        YEAR2 = rep(df_reg$YEAR2, times = reps),
@@ -112,11 +112,11 @@ df_ov = df_iterations |>
   unnest_wider(ov) |> 
   select(YEAR1, YEAR2, site1, site2, hv1_size, hv2_size, size_ratio,
          jaccard, sorensen, uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
-         dist_cent)
+         dist_cent, i)
 
 
 #saveRDS(df_ov, "data/YEAR_ov.rds")
-write_csv(df_ov, "YEAR_ov_randCov_avgTr.csv")
+write_csv(df_ov, "YEAR_ov_randCov_avgTr_SITES.csv")
 
 df_avg = df_ov |> 
   group_by(YEAR1,YEAR2) |>

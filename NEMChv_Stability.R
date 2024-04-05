@@ -11,17 +11,15 @@ library(viridis)
 # step 1 variance ----
 # plot centroid dist and size over year ----
 # centroid distance
-df_ov = read_csv('data/hv_ovAll.csv') |> 
-  filter(ychange == 1)|> 
-  mutate(BASIN = factor(BASIN, levels = 
-                          c('JON', 'RKB', 'TWN', 'RAN', 'WHP',
-                            'MAD', 'CAL', 'CRN', 'EAG', 'BLK')))
+NEMCHV = read_csv("YEAR_ov_randCov_avgTr_SITES.csv") %>% 
+  filter(site1==site2)
 
-ggplot(df_ov, aes(y2, dist_cent, color = BASIN))+
+
+ggplot(df_ov, aes(YEAR2, dist_cent, color = site2))+
   geom_hline(aes(yintercept = 1), linetype = 'dashed')+
   geom_point(size = 2.5)+
   geom_line(linewidth = 1)+
-  facet_wrap(~BASIN,  nrow = 2)+
+  facet_wrap(~site2,  nrow = 2)+
   scale_color_viridis_d(option = 'turbo')+
   labs(x = 'Year', y = 'Centroid distance')+theme_bw()+
   theme(axis.title = element_text(size = 14), 
@@ -33,7 +31,10 @@ ggplot(df_ov, aes(y2, dist_cent, color = BASIN))+
         legend.position = 'none',
         legend.title = element_text(size = 14),
         strip.text.x = element_text(size = 14),
-        legend.text = element_text(size = 12))
+        legend.text = element_text(size = 12)) +
+  scale_x_discrete(labels = unique(df_ov$YEAR2))
+
+
 
 ggsave('figs/hvDistYearly.png', 
        units="in", width=10, height=6, dpi=600)
