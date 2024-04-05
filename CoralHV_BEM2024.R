@@ -63,36 +63,36 @@ df = df_ben |>
          centroid = map(hv, \(hv) get_centroid(hv)))
 
 
-saveRDS(df, 'data/region_hvs_randCov_avgTr.rds')
+saveRDS(df, 'G:/R_analysis/YEAR_hvs_randCov_avgTr.rds')
 
-df |> select(region, i, hv_size, centroid) |> 
+df |> select(YEAR, i, hv_size, centroid) |> 
   unnest_wider(centroid) |> 
-  write_csv('data/region_hvs_randCov_avgTr.csv')
+  write_csv('G:/R_analysis/YEAR_hvs_randCov_avgTr.csv')
 # will be too big for github
 
-# # plot size across region
-# ggplot(df, aes(region, hv_size))+
+# # plot size across YEAR
+# ggplot(df, aes(YEAR, hv_size))+
 #   geom_boxplot()
 
 
-# comparison of across region (change df_y to gb)
-df_reg = tibble(region1 = unique(df$region),
-                region2 = unique(df$region)) |> 
-  expand(region1,region2)
+# comparison of across YEARS (change df_y to gb)
+df_reg = tibble(YEAR1 = unique(df$YEAR),
+                YEAR2 = unique(df$YEAR)) |> 
+  expand(YEAR1, YEAR2)
 
 df_reg = df_reg[!duplicated(t(apply(df_reg,1,sort))),] %>% 
-  filter(!(region1 == region2))
+  filter(!(YEAR1 == YEAR2))
 
-df_iterations = tibble(region1 = rep(df_reg$region1, times = reps),
-                       region2 = rep(df_reg$region2, times = reps),
-                       i = rep(1:reps, each = length(df_reg$region1))) 
+df_iterations = tibble(YEAR1 = rep(df_reg$YEAR1, times = reps),
+                       YEAR2 = rep(df_reg$YEAR2, times = reps),
+                       i = rep(1:reps, each = length(df_reg$YEAR1))) 
 
 # years to make 
 df_1 = df|> 
-  select(region1 = region, hv1 = hv, hv1_size = hv_size, i = i)
+  select(YEAR1 = YEAR, hv1 = hv, hv1_size = hv_size, i = i)
 
 df_2 = df |> 
-  select(region2 = region, hv2 = hv, hv2_size = hv_size, i = i)
+  select(YEAR2 = YEAR, hv2 = hv, hv2_size = hv_size, i = i)
 
 # create large df to store all data
 
@@ -102,26 +102,26 @@ df_2 = df |>
 # y2 = rep(df_y$y2, times = length(unique(df$BASIN))))
 
 df_ov = df_iterations |> 
-  inner_join(df_1, by = c('region1', 'i')) |> 
-  inner_join(df_2, by = c('region2', 'i')) |> 
+  inner_join(df_1, by = c('YEAR1', 'i')) |> 
+  inner_join(df_2, by = c('YEAR2', 'i')) |> 
   mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
          ov = map(set, \(set) hypervolume_overlap_statistics(set)),
          dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
          size_ratio = hv1_size/hv2_size,
          i = i) |> 
   unnest_wider(ov) |> 
-  select(region1, region2, hv1_size, hv2_size, size_ratio,
+  select(YEAR1, YEAR2, hv1_size, hv2_size, size_ratio,
          jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
          dist_cent)
 
-#saveRDS(df_ov, "data/region_ov.rds")
-write_csv(df_ov, "data/region_ov_randCov_avgTr.csv")
+#saveRDS(df_ov, "data/YEAR_ov.rds")
+write_csv(df_ov, "G:/R_analysis/YEAR_ov_randCov_avgTr.csv")
 
 df_avg = df_ov |> 
-  group_by(region1,region2) |>
+  group_by(YEAR1,YEAR2) |>
   summarize(across(hv1_size:dist_cent, mean))
 
-ggplot(df_avg, aes(region1, region2, fill = sorensen))+
+ggplot(df_avg, aes(YEAR1, YEAR2, fill = sorensen))+
   geom_tile()+
   scale_fill_viridis(limits = c(0,1))
 
