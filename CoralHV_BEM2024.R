@@ -44,13 +44,13 @@ df = df_ben |>
          `skeletal density` = `mean_skeletal density`,
          `symbiodinium density` = `mean_symbiodinium density`,
          `colony maximum diameter` = `mean_colony maximum diameter`) |> 
-  select(YEAR, i:`colony maximum diameter`) |> 
+  select(YEAR, site, i:`colony maximum diameter`) |> 
   group_by(i) |> 
   mutate(across(`corallite diameter`:`colony maximum diameter`, scale)) |> 
-  group_by(YEAR, i) |> 
+  group_by(YEAR, i, site) |> 
   nest(weight = percentcover, data = `corallite diameter`:`colony maximum diameter`) |> 
   mutate(hv = map2(data,weight, \(data,weight) hypervolume_gaussian(data, 
-                                                                    name = paste(YEAR,i,sep = '_'),
+                                                                    name = paste(YEAR,site,i,sep = '_'),
                                                                     weight = weight$percentcover,
                                                                     samples.per.point = 1000,
                                                                     kde.bandwidth = estimate_bandwidth(data), 
@@ -63,61 +63,60 @@ df = df_ben |>
          centroid = map(hv, \(hv) get_centroid(hv)))
 
 
-saveRDS(df, 'G:/R_analysis/YEAR_hvs_randCov_avgTr.rds')
+saveRDS(df, 'C:/Users/valeb/OneDrive - Florida International University/GitHubRep/YEAR_hvs_randCov_avgTr_SITES.rds')
 
 ###saving all the Hypervolumes 
 
-df |> select(YEAR, i, hv_size, centroid) |> 
+df |> select(YEAR, site,i, hv_size, centroid) |> 
   unnest_wider(centroid) |> 
-  write_csv('G:/R_analysis/YEAR_hvs_randCov_avgTr.csv')
+  write_csv('YEAR_hvs_randCov_avgTr_SITES.csv')
 # will be too big for github
 
 # # plot size across YEAR
 # ggplot(df, aes(YEAR, hv_size))+
 #   geom_boxplot()
 
+# Extract unique values of YEAR and site from the dataframe df
+unique_years <- unique(df$YEAR)
+unique_sites <- unique(df$site)
 
-# comparison of across YEARS (change df_y to gb)
-df_reg = tibble(YEAR1 = unique(df$YEAR),
-                YEAR2 = unique(df$YEAR)) |> 
-  expand(YEAR1, YEAR2)
+# Create tibble with combinations of YEAR1, YEAR2, site1, and site2
+df_reg <- expand.grid(YEAR1 = unique_years, YEAR2 = unique_years,
+                      site1 = unique_sites, site2 = unique_sites) %>%
+  filter(YEAR1 != YEAR2)  # Filter out combinations where YEAR1 equals YEAR2
+
 
 df_reg = df_reg[!duplicated(t(apply(df_reg,1,sort))),] %>% 
-  filter(!(YEAR1 == YEAR2))
+  filter(!(YEAR1 == YEAR2) & !(site1 == site2))  # Filtering based on both YEAR and site
 
 df_iterations = tibble(YEAR1 = rep(df_reg$YEAR1, times = reps),
                        YEAR2 = rep(df_reg$YEAR2, times = reps),
+                       site1 = rep(df_reg$site1, times = reps),  # Adding site1
+                       site2 = rep(df_reg$site2, times = reps),  # Adding site2
                        i = rep(1:reps, each = length(df_reg$YEAR1))) 
 
-# years to make 
-df_1 = df|> 
-  select(YEAR1 = YEAR, hv1 = hv, hv1_size = hv_size, i = i)
+df_1 = df |> 
+  select(YEAR1 = YEAR, site1 = site, hv1 = hv, hv1_size = hv_size, i = i)  # Adding site1
 
 df_2 = df |> 
-  select(YEAR2 = YEAR, hv2 = hv, hv2_size = hv_size, i = i)
-
-# create large df to store all data
-
-# tibble(BASIN = rep(unique(df$BASIN),
-#             each = nrow(df_y)),
-# y1 = rep(df_y$y1, times = length(unique(df$BASIN))),
-# y2 = rep(df_y$y2, times = length(unique(df$BASIN))))
+  select(YEAR2 = YEAR, site2 = site, hv2 = hv, hv2_size = hv_size, i = i)  # Adding site2
 
 df_ov = df_iterations |> 
-  inner_join(df_1, by = c('YEAR1', 'i')) |> 
-  inner_join(df_2, by = c('YEAR2', 'i')) |> 
-  mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
+  inner_join(df_1, by = c('YEAR1', 'site1', 'i')) |>  # Adding site1
+  inner_join(df_2, by = c('YEAR2', 'site2', 'i')) |>  # Adding site2
+  mutate(set = map2(hv1, hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
          ov = map(set, \(set) hypervolume_overlap_statistics(set)),
-         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         dist_cent = map2_dbl(hv1, hv2, \(hv1, hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory = F)),
          size_ratio = hv1_size/hv2_size,
          i = i) |> 
   unnest_wider(ov) |> 
-  select(YEAR1, YEAR2, hv1_size, hv2_size, size_ratio,
-         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+  select(YEAR1, YEAR2, site1, site2, hv1_size, hv2_size, size_ratio,
+         jaccard, sorensen, uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
          dist_cent)
 
+
 #saveRDS(df_ov, "data/YEAR_ov.rds")
-write_csv(df_ov, "G:/R_analysis/YEAR_ov_randCov_avgTr.csv")
+write_csv(df_ov, "YEAR_ov_randCov_avgTr.csv")
 
 df_avg = df_ov |> 
   group_by(YEAR1,YEAR2) |>
