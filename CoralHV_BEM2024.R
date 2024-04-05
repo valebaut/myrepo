@@ -124,7 +124,6 @@ write_csv(df_ov, "YEAR_ov_randCov_avgTr_SITES.csv")
 
 ##########WITHIN YEAR COMPARISON ACROSS SITES 
 
-
 # Generate combinations of sites within the same year
 df_site_combinations <- df %>%
   group_by(YEAR) %>%
