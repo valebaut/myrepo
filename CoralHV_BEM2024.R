@@ -1,6 +1,6 @@
-#' """ NEMC Time-Series Hypervolumes 
+#' """ NEMC Time-Series BEM
 #'     @authors: Coral PR Team 
-#'     date: """3/7/24
+#'     date: """4/5/24
 
 library(tidyverse)
 library(hypervolume)
