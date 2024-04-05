@@ -11,11 +11,14 @@ library(viridis)
 # step 1 variance ----
 # plot centroid dist and size over year ----
 # centroid distance
-NEMCHV = read_csv("YEAR_ov_randCov_avgTr_SITES.csv") %>% 
-  filter(site1==site2)
+NEMCHV = read_csv("YEAR_ov_randCov_avgTr_SITES.csv") 
 
+###same site over time 
+site_ot<- NEMCHV %>% 
+  filter(site1==site2) %>% 
+  mutate(Years_Between = abs(YEAR2 - YEAR1))
 
-ggplot(df_ov, aes(YEAR2, dist_cent, color = site2))+
+ggplot(site_ot, aes(Years_Between, dist_cent, color = site2))+
   geom_hline(aes(yintercept = 1), linetype = 'dashed')+
   geom_point(size = 2.5)+
   geom_line(linewidth = 1)+
@@ -31,12 +34,31 @@ ggplot(df_ov, aes(YEAR2, dist_cent, color = site2))+
         legend.position = 'none',
         legend.title = element_text(size = 14),
         strip.text.x = element_text(size = 14),
-        legend.text = element_text(size = 12)) +
-  scale_x_discrete(labels = unique(df_ov$YEAR2))
+        legend.text = element_text(size = 12)) 
+###comparison across site 
+withinyear=read_csv('YEAR_hvs_randCov_avgTr_SITES.csv')
+
+ggplot(withinyear, aes(year, dist_cent, color = site2))+
+  geom_hline(aes(yintercept = 1), linetype = 'dashed')+
+  geom_point(size = 2.5)+
+  geom_line(linewidth = 1)+
+  facet_wrap(~site2,  nrow = 2)+
+  scale_color_viridis_d(option = 'turbo')+
+  labs(x = 'Year', y = 'Centroid distance')+theme_bw()+
+  theme(axis.title = element_text(size = 14), 
+        axis.text.y = element_text(size = 14, colour = "black"),
+        axis.text.x = element_text(size = 12, colour = "black"), 
+        plot.title = element_text(size = 14, hjust=0.5),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = 'none',
+        legend.title = element_text(size = 14),
+        strip.text.x = element_text(size = 14),
+        legend.text = element_text(size = 12)) 
 
 
 
-ggsave('figs/hvDistYearly.png', 
+ggsave('hvDistYearly.png', 
        units="in", width=10, height=6, dpi=600)
 
 # size 
