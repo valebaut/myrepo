@@ -5,7 +5,6 @@
 library(tidyverse)
 library(hypervolume)
 library(viridis)
-library(installr)
 
 
 # load trait data
@@ -13,15 +12,15 @@ df_tr = read_csv('TraitTable.csv') |>
   drop_na()
 
 # load benthic data
-df_ben = read.csv('benthicdata_PR,csv')|> 
-rename(year = YEAR, region = REGION) |>
-  filter(`SITE NAME` %in% c("Carlos Rosario",  "Dakiti", "Cayo Diablo (2016)",  "Palominitos (2016)", "Palominos (2016)", "Canal Luis Pena" )) |> 
+df_ben = read.csv('benthicdata_PR.csv')|> 
+rename(site= SITE.NAME) |>
+  filter(`site` %in% c("Carlos Rosario",  "Dakiti", "Cayo Diablo (2016)",  "Palominitos (2016)", "Palominos (2016)", "Canal Luis Pena" )) |> 
   filter(`YEAR` %in% c(2016, 2018, 2021, 2023))|>
   filter(species %in% unique(df_tr$species)) |> 
   pivot_wider(names_from =species, values_from = percentcover, values_fill = 0) |> 
-  pivot_longer(`Acropora cervicornis`:`Porites furcata`, 
+  pivot_longer(`Acropora cervicornis`:`Orbicella franksi`, 
                names_to = 'species', values_to = 'percentcover') |> 
-  group_by(species, region) |> 
+  group_by(species, YEAR, site) |> 
   summarize(pc = mean(percentcover),
             pc_sd = sd(percentcover),
             .groups = 'drop') |> 
@@ -45,13 +44,13 @@ df = df_ben |>
          `skeletal density` = `mean_skeletal density`,
          `symbiodinium density` = `mean_symbiodinium density`,
          `colony maximum diameter` = `mean_colony maximum diameter`) |> 
-  select(region, i:`colony maximum diameter`) |> 
+  select(YEAR, i:`colony maximum diameter`) |> 
   group_by(i) |> 
   mutate(across(`corallite diameter`:`colony maximum diameter`, scale)) |> 
-  group_by(region, i) |> 
+  group_by(YEAR, i) |> 
   nest(weight = percentcover, data = `corallite diameter`:`colony maximum diameter`) |> 
   mutate(hv = map2(data,weight, \(data,weight) hypervolume_gaussian(data, 
-                                                                    name = paste(region,i,sep = '_'),
+                                                                    name = paste(YEAR,i,sep = '_'),
                                                                     weight = weight$percentcover,
                                                                     samples.per.point = 1000,
                                                                     kde.bandwidth = estimate_bandwidth(data), 
