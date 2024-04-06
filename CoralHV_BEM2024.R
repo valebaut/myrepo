@@ -68,9 +68,13 @@ saveRDS(df, 'C:/Users/valeb/OneDrive - Florida International University/GitHubRe
 
 ###saving all the Hypervolumes 
 
-df |> select(YEAR, site,i, hv_size, centroid) |> 
+df |> 
+  select(YEAR, site,i, hv_size, centroid) |> 
   unnest_wider(centroid) |> 
   write_csv('hvALL.csv')
+df_size= df |> 
+  select(YEAR, site,i, hv_size, centroid) |> 
+  write_csv('hvALL_size.csv')
 # will be too big for github
 
 # # plot size across YEAR
