@@ -78,88 +78,195 @@ df |> select(YEAR, site,i, hv_size, centroid) |>
 #   geom_boxplot()
 
 ##############SITES OVER TIME 
+df_y= tibble(y1 = unique(df$YEAR),
+             y2 = unique(df$YEAR)) |> 
+  expand(y1,y2)
 
-# Extract unique values of YEAR and site from the dataframe df
-unique_years <- unique(df$YEAR)
-unique_sites <- unique(df$site)
+df_y = df_y[!duplicated(t(apply(df_y,1,sort))),] %>% 
+  filter(!(y1 == y2))
 
-# Create tibble with combinations of YEAR1, YEAR2, site1, and site2
-df_reg <- expand.grid(YEAR1 = unique_years, YEAR2 = unique_years,
-                      site1 = unique_sites, site2 = unique_sites) %>%
-  filter(YEAR1 != YEAR2)  # Filter out combinations where YEAR1 equals YEAR2
+# years to make 
+df1 = df |> 
+  select(site, y1 = YEAR, hv1 = hv, hv1_size = hv_size, cent1 = centroid, i)
+
+df2 = df |> 
+  select(site, y2 = YEAR, hv2 = hv, hv2_size = hv_size, cent2 = centroid, i)
 
 
-df_reg = df_reg[!duplicated(t(apply(df_reg,1,sort))),] 
-
-df_iterations = tibble(YEAR1 = rep(df_reg$YEAR1, times = reps),
-                       YEAR2 = rep(df_reg$YEAR2, times = reps),
-                       site1 = rep(df_reg$site1, times = reps),  # Adding site1
-                       site2 = rep(df_reg$site2, times = reps),  # Adding site2
-                       i = rep(1:reps, each = length(df_reg$YEAR1))) 
-
-df_1 = df |> 
-  select(YEAR1 = YEAR, site1 = site, hv1 = hv, hv1_size = hv_size, i = i)  # Adding site1
-
-df_2 = df |> 
-  select(YEAR2 = YEAR, site2 = site, hv2 = hv, hv2_size = hv_size, i = i)  # Adding site2
-
-df_ov = df_iterations |> 
-  inner_join(df_1, by = c('YEAR1', 'site1', 'i')) |>  # Adding site1
-  inner_join(df_2, by = c('YEAR2', 'site2', 'i')) |>  # Adding site2
-  mutate(set = map2(hv1, hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
+# create data frame of all data and make yearly comparisons
+df_o = tibble(site = rep(unique(df$site),
+                           each = nrow(df_y)),
+               y1 = rep(df_y$y1, times = length(unique(df$site))),
+               y2 = rep(df_y$y2, times = length(unique(df$site)))) |> 
+  inner_join(df1, by = c('site', 'y1')) |> 
+  inner_join(df2, by = c('site', 'y2')) |> 
+  mutate(ychange = y2-y1,
+         size_rat = hv2_size/hv1_size,
+         set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
          ov = map(set, \(set) hypervolume_overlap_statistics(set)),
-         dist_cent = map2_dbl(hv1, hv2, \(hv1, hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory = F)),
-         size_ratio = hv1_size/hv2_size,
-         i = i) |> 
+         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         dif = map2(cent1, cent2, \(cent1,cent2) cent2 - cent1)) |> 
   unnest_wider(ov) |> 
-  select(YEAR1, YEAR2, site1, site2, hv1_size, hv2_size, size_ratio,
-         jaccard, sorensen, uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+  unnest_wider(dif) |> 
+  select(site, y1, y2, ychange, hv1_size, hv2_size, size_rat, 
+         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
          dist_cent)
-
-
-#saveRDS(df_ov, "data/YEAR_ov.rds")
-write_csv(df_ov, "YEAR_ov_randCov_avgTr_SITES.csv")
 
 
 
 ##########WITHIN YEAR COMPARISON ACROSS SITES 
+####seperate years 
+WI_2016 = df %>% 
+  filter(YEAR==2016)
+WI_2018 = df %>% 
+  filter(YEAR==2018)
+WI_2021 = df %>% 
+  filter(YEAR==2021)
+WI_2023 = df %>% 
+  filter(YEAR==2023)
+####build tibble for each year 
+##2016
+reg_2016 = tibble(site1 = unique(df$site),
+                site2 = unique(df$site)) |> 
+  expand(site1,site2)
 
-# Generate combinations of sites within the same year
-df_site_combinations <- df %>%
-  group_by(YEAR) %>%
-  mutate(combinations = list(combn(site, 2, simplify = FALSE))) %>%
-  unnest(combinations) %>%
-  rename(SITE1 = combinations[[1]], SITE2 = combinations[[2]]) %>%
-  distinct()
+reg_2016 = reg_2016[!duplicated(t(apply(reg_2016,1,sort))),] %>% 
+  filter(!(site1 == site2))
 
-# Perform comparisons between sites within the same year
-df_ov_2 <- df_site_combinations %>%
-  mutate(i = row_number()) %>%
-  left_join(df, by = c("YEAR", "SITE1")) %>%
-  select(-site) %>%
-  rename(hv1 = hv, hv1_size = hv_size) %>%
-  left_join(df, by = c("YEAR", "SITE2")) %>%
-  select(-site) %>%
-  rename(hv2 = hv, hv2_size = hv_size) %>%
-  mutate(set = map2(hv1, hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = FALSE, verbose = FALSE)),
+iteration_2016 = tibble(site1 = rep(reg_2016$site1, times = reps),
+                       site2 = rep(reg_2016$site2, times = reps),
+                       i = rep(1:reps, each = length(reg_2016$site1))) 
+
+# years to make 
+df_161 = df|> 
+  select(site1 = site, hv1 = hv, hv1_size = hv_size, i = i, YEAR)
+
+df_162 = df |> 
+  select(site2 = site, hv2 = hv, hv2_size = hv_size, i = i, YEAR)
+###2018
+reg_2018 = tibble(site1 = unique(df$site),
+                  site2 = unique(df$site)) |> 
+  expand(site1,site2)
+
+reg_2018 = reg_2018[!duplicated(t(apply(reg_2018,1,sort))),] %>% 
+  filter(!(site1 == site2))
+
+iteration_2018 = tibble(site1 = rep(reg_2018$site1, times = reps),
+                        site2 = rep(reg_2018$site2, times = reps),
+                        i = rep(1:reps, each = length(reg_2018$site1))) 
+
+# years to make 
+df_181 = df|> 
+  select(site1 = site, hv1 = hv, hv1_size = hv_size, i = i, YEAR)
+
+df_182 = df |> 
+  select(site2 = site, hv2 = hv, hv2_size = hv_size, i = i, YEAR)
+###2021
+reg_2021 = tibble(site1 = unique(df$site),
+                  site2 = unique(df$site)) |> 
+  expand(site1,site2)
+
+reg_2021 = reg_2021[!duplicated(t(apply(reg_2021,1,sort))),] %>% 
+  filter(!(site1 == site2))
+
+iteration_2021 = tibble(site1 = rep(reg_2021$site1, times = reps),
+                        site2 = rep(reg_2021$site2, times = reps),
+                        i = rep(1:reps, each = length(reg_2021$site1))) 
+
+# years to make 
+df_211 = df|> 
+  select(site1 = site, hv1 = hv, hv1_size = hv_size, i = i, YEAR)
+
+df_212 = df |> 
+  select(site2 = site, hv2 = hv, hv2_size = hv_size, i = i, YEAR)
+###2023
+reg_2023 = tibble(site1 = unique(df$site),
+                  site2 = unique(df$site)) |> 
+  expand(site1,site2)
+
+reg_2023 = reg_2023[!duplicated(t(apply(reg_2023,1,sort))),] %>% 
+  filter(!(site1 == site2))
+
+iteration_2023 = tibble(site1 = rep(reg_2023$site1, times = reps),
+                        site2 = rep(reg_2023$site2, times = reps),
+                        i = rep(1:reps, each = length(reg_2023$site1))) 
+
+# years to make 
+df_231 = df|> 
+  select(site1 = site, hv1 = hv, hv1_size = hv_size, i = i, YEAR)
+
+df_232 = df |> 
+  select(site2 = site, hv2 = hv, hv2_size = hv_size, i = i, YEAR)
+####Make iterations for each year 
+###2016
+ov_2016 = iteration_2016 |> 
+  inner_join(df_161, by = c('site1', 'i')) |> 
+  inner_join(df_162, by = c('site2', 'i')) |> 
+  mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
          ov = map(set, \(set) hypervolume_overlap_statistics(set)),
-         dist_cent = map2_dbl(hv1, hv2, \(hv1, hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory = FALSE)),
-         size_ratio = hv1_size / hv2_size) %>%
-  unnest_wider(ov) %>%
-  select(YEAR, site1, SITE2, hv1_size, hv2_size, size_ratio, jaccard, sorensen,
-         uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, dist_cent)
+         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         size_ratio = hv1_size/hv2_size,
+         i = i) |> 
+  mutate(year=2016) |>
+  unnest_wider(ov) |> 
+  select(site1, site2, hv1_size, hv2_size, size_ratio,
+         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+         dist_cent,i, year)
 
-# Save the resulting dataframe
-write.csv(df_ov_2, "comparison_within_year.csv", row.names = FALSE)
+###2018 
+ov_2018 = iteration_2018 |> 
+  inner_join(df_181, by = c('site1', 'i')) |> 
+  inner_join(df_182, by = c('site2', 'i')) |> 
+  mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
+         ov = map(set, \(set) hypervolume_overlap_statistics(set)),
+         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         size_ratio = hv1_size/hv2_size,
+         i = i) |> 
+  mutate(year=2018) |>
+  unnest_wider(ov) |> 
+  select(site1, site2, hv1_size, hv2_size, size_ratio,
+         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+         dist_cent,i, year)
+###2021 
+ov_2021 = iteration_2021 |> 
+  inner_join(df_211, by = c('site1', 'i')) |> 
+  inner_join(df_212, by = c('site2', 'i')) |> 
+  mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
+         ov = map(set, \(set) hypervolume_overlap_statistics(set)),
+         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         size_ratio = hv1_size/hv2_size,
+         i = i) |> 
+  mutate(year=2021) |>
+  unnest_wider(ov) |> 
+  select(site1, site2, hv1_size, hv2_size, size_ratio,
+         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+         dist_cent,i, year)
+###2022 
+ov_2022 = iteration_2022 |> 
+  inner_join(df_221, by = c('site1', 'i')) |> 
+  inner_join(df_222, by = c('site2', 'i')) |> 
+  mutate(set = map2(hv1,hv2, \(hv1, hv2) hypervolume_set(hv1, hv2, check.memory = F, verbose = F)),
+         ov = map(set, \(set) hypervolume_overlap_statistics(set)),
+         dist_cent = map2_dbl(hv1, hv2, \(hv1,hv2) hypervolume_distance(hv1, hv2, type = 'centroid', check.memory=F)),
+         size_ratio = hv1_size/hv2_size,
+         i = i) |> 
+  mutate(year=2022) |>
+  unnest_wider(ov) |> 
+  select(site1, site2, hv1_size, hv2_size, size_ratio,
+         jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+         dist_cent,i, year)
+
+###Join all four years 
+
+select(site1, site2, hv1_size, hv2_size, size_ratio,
+       jaccard, sorensen,uniq_y1 = frac_unique_1, uniq_y2 = frac_unique_2, 
+       dist_cent,i, year)
+#saveRDS(df_ov, "data/site_ov.rds")
+write_csv(df_ov, "data/site_ov_randCov_avgTr.csv")
+
+################################################################
 
 
-
-
-
-withinyear<-df_1 %>% 
-  select(YEAR1, site1, hv_size) |> 
-  unnest_wider(centroid) |> 
-  write_csv(withinyear, "YEAR_ov_randCov_avgTr_withinyear.csv")
 
 df_avg = df_ov |> 
   group_by(YEAR1,YEAR2) |>
