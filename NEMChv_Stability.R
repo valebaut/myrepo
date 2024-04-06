@@ -335,10 +335,7 @@ df_ov = read_csv("sitesthrutime.csv") |>
 
 d = df_ov |> 
   select(site, data, model) |> 
-  unnest(cols = c(data))|> 
-  mutate(site = factor(site, levels = 
-                          c('JON', 'RKB', 'TWN', 'RAN', 'WHP',
-                            'MAD', 'CAL', 'CRN', 'EAG', 'BLK')))
+  unnest(cols = c(data))
 
 ggplot(d, aes(ychange, dist_cent, color = site))+
   geom_hline(aes(yintercept = 1), linetype = 'dashed')+
@@ -370,56 +367,11 @@ ggplot(d, aes(ychange, dist_cent, color = site))+
 ggsave('figs/centResp.png', 
        units="in", width=10, height=6, dpi=600)
 
-# comparison to 2007----
-df_ov = read_csv('data/hv_ovAll.csv') |> 
-  filter(y1 == 2007) |> 
-  group_by(site) |>
-  nest() |> 
-  mutate(m_int = map(data, \(df)lm(dist_cent~1, data = df)),
-         m_lin = map(data, \(df)lm(dist_cent~ychange, data = df)),
-         m_quad = map(data, \(df)lm(dist_cent~ychange + I(ychange^2), data = df)),
-         AICc_int = map_dbl(m_int, \(x) AICc(x)),
-         AICc_lin = map_dbl(m_lin, \(x) AICc(x)),
-         AICc_quad = map_dbl(m_quad, \(x) AICc(x)),
-         model = case_when(
-           AICc_int - min(c(AICc_int,AICc_lin,AICc_quad)) <= 4 ~ 'Intercept',
-           AICc_lin < AICc_quad ~ 'Linear',
-           AICc_quad < AICc_lin ~ 'Quadratic'))
 
-d = df_ov |> 
-  select(site, data, model) |> 
-  unnest(cols = c(data))|> 
-  mutate(site = factor(site, levels = 
-                          c('JON', 'RKB', 'TWN', 'RAN', 'WHP',
-                            'MAD', 'CAL', 'CRN', 'EAG', 'BLK')))
-
-
-
-ggplot(d, aes(y2, dist_cent, color = site))+
-  geom_hline(aes(yintercept = 1), linetype = 'dashed')+
-  geom_point(size = 2.5)+
-  geom_line(linewidth = 1)+
-  scale_color_viridis_d(option = 'turbo')+
-  facet_wrap(~site,  nrow = 2)+
-  labs(x = 'Year', y = 'Centroid distance to 2007')+
-  theme_bw()+
-  theme(axis.title = element_text(size = 14), 
-        axis.text.y = element_text(size = 14, colour = "black"),
-        axis.text.x = element_text(size = 12, colour = "black"), 
-        plot.title = element_text(size = 14, hjust=0.5),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.position = 'none',
-        legend.title = element_text(size = 14),
-        strip.text.x = element_text(size = 14),
-        legend.text = element_text(size = 12))
-
-ggsave('figs/centComp07.png', 
-       units="in", width=10, height=6, dpi=600)
 # size ratio----
-df = read_csv('data/hvAll.csv')
+df = read_csv('hvALL.csv')
 
-df_ov = read_csv('data/hv_ovAll.csv') |> 
+df_ov = read_csv("sitesthrutime.csv") |> 
   mutate(lsr = log(size_rat)) |> 
   group_by(site) |>
   nest() |> 
@@ -436,10 +388,7 @@ df_ov = read_csv('data/hv_ovAll.csv') |>
 
 d = df_ov |> 
   select(site, data, model) |> 
-  unnest(cols = c(data)) |> 
-  mutate(site = factor(site, levels = 
-                          c('JON', 'RKB', 'TWN', 'RAN', 'WHP',
-                            'MAD', 'CAL', 'CRN', 'EAG', 'BLK')))
+  unnest(cols = c(data))
 
 ggplot(d, aes(ychange, lsr, color = site))+
   geom_hline(aes(yintercept = 0), linetype = 'dashed')+
@@ -471,39 +420,10 @@ ggsave('figs/sizeRespLog.png',
        units="in", width=10, height=6, dpi=600)
 
 
-# size ratio to 07 ----
-df_ov = read_csv('data/hv_ovAll.csv') |> 
-  filter(y1 == 2007) |> 
-  mutate(lsr = log(size_rat))
-
-
-ggplot(df_ov, aes(y2, lsr, color = site))+
-  geom_hline(aes(yintercept = 0), linetype = 'dashed')+
-  geom_point(size = 2.5)+
-  geom_line(linewidth = 1)+
-  scale_color_viridis_d(option = 'turbo')+
-  facet_wrap(~site,  nrow = 2)+
-  labs(x = 'Year', y = 'log(Year/2007 size ratio)')+
-  theme_bw()+
-  theme(axis.title = element_text(size = 14), 
-        axis.text.y = element_text(size = 14, colour = "black"),
-        axis.text.x = element_text(size = 12, colour = "black"),  
-        plot.title = element_text(size = 14, hjust=0.5),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.position = 'none',
-        legend.title = element_text(size = 14),
-        strip.text.x = element_text(size = 14),
-        legend.text = element_text(size = 12))
-
-ggsave('figs/sratioComp07.png', 
-       units="in", width=10, height=6, dpi=600)
-
-
 # size relative----
-df = read_csv('data/hvAll.csv')
+df = read_csv('hvAll.csv')
 
-df_ov = read_csv('data/hv_ovAll.csv') |> 
+df_ov = read_csv("sitesthrutime.csv") |> 
   mutate(size_ch = (hv2_size-hv1_size)/hv1_size) |> 
   group_by(site) |>
   nest() |> 

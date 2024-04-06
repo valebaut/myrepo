@@ -28,7 +28,7 @@ rename(site= SITE.NAME) |>
   filter(pc > 0) 
 
 # make the hvs for random cover and avg traits----
-reps = 1
+reps = 100
 
 set.seed(14)
 df = df_ben |> 
@@ -72,9 +72,7 @@ df |>
   select(YEAR, site,i, hv_size, centroid) |> 
   unnest_wider(centroid) |> 
   write_csv('hvALL.csv')
-df_size= df |> 
-  select(YEAR, site,i, hv_size, centroid) |> 
-  write_csv('hvALL_size.csv')
+
 # will be too big for github
 
 # # plot size across YEAR
