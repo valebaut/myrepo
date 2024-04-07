@@ -11,19 +11,28 @@ library(viridis)
 # step 1 variance ----
 # plot centroid dist and size over year ----
 # centroid distance
-site_time = read_csv("sitesthrutime.csv") 
+site_time = read_csv("sitesthrutime.csv")  
+df_var <- site_time %>%
+  group_by(site, y1, y2) %>%
+  reframe(
+    var = var(dist_cent),
+    mean = mean(dist_cent),
+    sd = sd(dist_cent),
+    cv = sd / mean,
+    stab = 1 / cv,
+    ychange = unique(ychange)
+  )
+
 
 ###site over time 
-site_ot<- site_time 
-
-ggplot(site_ot, aes(ychange, dist_cent, color = site))+
-  geom_hline(aes(yintercept = 1), linetype = 'dashed')+
-  geom_point(size = 2.5)+
-  geom_line(linewidth = 1)+
-  facet_wrap(~site,  nrow = 2)+
-  scale_color_viridis_d(option = 'turbo')+
-  labs(x = 'Years Between', y = 'Centroid distance')+theme_bw()+
-  theme(axis.title = element_text(size = 14), 
+ggplot(df_var, aes(ychange, mean, color = site))+
+    geom_hline(aes(yintercept = 1), linetype = 'dashed')+
+    geom_point(size = 2.5)+
+    geom_line(linewidth = 1)+
+    facet_wrap(~site,  nrow = 2)+
+    scale_color_viridis_d(option = 'turbo')+
+    labs(x = 'Years Between', y = 'Centroid distance')+theme_bw()+
+    theme(axis.title = element_text(size = 14), 
         axis.text.y = element_text(size = 14, colour = "black"),
         axis.text.x = element_text(size = 12, colour = "black"), 
         plot.title = element_text(size = 14, hjust=0.5),
@@ -34,9 +43,17 @@ ggplot(site_ot, aes(ychange, dist_cent, color = site))+
         strip.text.x = element_text(size = 14),
         legend.text = element_text(size = 12)) 
 ###within year comparison across sites 
-withiyear_acrosssite = read_csv("withinyear_acrosssites.csv") 
+withiyear_acrosssite = read_csv("withinyear_acrosssites.csv")  %>%
+  group_by(site1, site2, year) %>%
+  reframe(
+    var = var(dist_cent),
+    mean = mean(dist_cent),
+    sd = sd(dist_cent),
+    cv = sd / mean,
+    stab = 1 / cv
+  )
 
-ggplot(withiyear_acrosssite, aes(year, dist_cent, color = site1))+
+ggplot(withiyear_acrosssite, aes(year, mean, color = site1))+
   geom_hline(aes(yintercept = 1), linetype = 'dashed')+
   geom_point(size = 2.5)+
   geom_line(linewidth = 1)+
@@ -60,7 +77,18 @@ ggsave('hvDistYearly.png',
        units="in", width=10, height=6, dpi=600)
 
 # size 
-ggplot(site_time, aes(y1, hv1_size, color = site))+
+df_var <- site_time %>%
+  group_by(site, y1, y2) %>%
+  reframe(
+    var = var(hv1_size),
+    mean = mean(hv1_size),
+    sd = sd(hv1_size),
+    cv = sd / mean,
+    stab = 1 / cv,
+    ychange = unique(ychange)
+  )
+
+ggplot(df_var, aes(y1, mean, color = site))+
   geom_point(size = 2.5)+
   geom_line(linewidth = 1)+
   facet_wrap(~site,  nrow = 2)+
@@ -81,9 +109,6 @@ ggplot(site_time, aes(y1, hv1_size, color = site))+
 
 ggsave('figs/hvSizeYearly.png', 
        units="in", width=10, height=6, dpi=600)
-
-# ggsave('figs/hvSizeYearlylog.tiff', 
-#        units="in", width=10, height=6, dpi=600,compression = 'lzw')
 
 # centroid distance loo ----
 df_ov = read_csv("sitesthrutime.csv") |> 
@@ -143,7 +168,7 @@ ggsave('figs/stabCentDist.png',
 
 
 # hv size loo ----
-df = read_csv('hvALL_size.csv') 
+df = read_csv('hvALL.csv') 
 
 ys = unique(df$YEAR)
 
@@ -316,15 +341,30 @@ ggsave('figs/s_imphvSize.png',
 
 # step 3 ----
 # centroid distance
-df = read_csv('hvALL.csv')
+df = read_csv('hvALL.csv') %>% 
+  group_by(site, YEAR) %>%
+  reframe(
+    var = var(hv_size),
+    mean = mean(hv_size),
+    sd = sd(hv_size),
+    cv = sd / mean,
+    stab = 1 / cv
+  )
 
 df_ov = read_csv("sitesthrutime.csv") |> 
-  #mutate(ychange2 = ychange*2) |> 
+  group_by(site, y1, y2) %>%
+  reframe(
+    var = var(dist_cent),
+    mean = mean(dist_cent),
+    sd = sd(dist_cent),
+    cv = sd / mean,
+    stab = 1 / cv,
+    ychange = unique(ychange)) |> 
   group_by(site) |>
   nest() |> 
-  mutate(m_int = map(data, \(df)lm(dist_cent~1, data = df)),
-         m_lin = map(data, \(df)lm(dist_cent~ychange, data = df)),
-         m_quad = map(data, \(df)lm(dist_cent~ychange + I(ychange^2), data = df)),
+  mutate(m_int = map(data, \(df)lm(mean~1, data = df)),
+         m_lin = map(data, \(df)lm(mean~ychange, data = df)),
+         m_quad = map(data, \(df)lm(mean~ychange + I(ychange^2), data = df)),
          AICc_int = map_dbl(m_int, \(x) AICc(x)),
          AICc_lin = map_dbl(m_lin, \(x) AICc(x)),
          AICc_quad = map_dbl(m_quad, \(x) AICc(x)),
@@ -337,7 +377,7 @@ d = df_ov |>
   select(site, data, model) |> 
   unnest(cols = c(data))
 
-ggplot(d, aes(ychange, dist_cent, color = site))+
+ggplot(d, aes(ychange, mean, color = site))+
   geom_hline(aes(yintercept = 1), linetype = 'dashed')+
   geom_point(size = 2.5)+
   geom_smooth(data = d |> filter(model == 'Intercept'),
@@ -421,10 +461,30 @@ ggsave('figs/sizeRespLog.png',
 
 
 # size relative----
-df = read_csv('hvAll.csv')
+df = read_csv('hvAll.csv')%>% 
+  group_by(site, YEAR) %>%
+  reframe(
+    var = var(hv_size),
+    mean = mean(hv_size),
+    sd = sd(hv_size),
+    cv = sd / mean,
+    stab = 1 / cv
+  )
 
-df_ov = read_csv("sitesthrutime.csv") |> 
-  mutate(size_ch = (hv2_size-hv1_size)/hv1_size) |> 
+df_ov = read_csv("sitesthrutime.csv") |>  
+  group_by(site, y1, y2) %>%
+  reframe(
+    var_hv1 = var(hv1_size),
+    mean_hv1 = mean(hv1_size),
+    sd_hv1 = sd(hv1_size),
+    cv_hv1 = sd_hv1/ mean_hv1,
+    var_hv2 = var(hv2_size),
+    mean_hv2 = mean(hv2_size),
+    sd_hv2 = sd(hv2_size),
+    cv_hv2 = sd_hv2/ mean_hv2,
+    stab_hv2 = 1 / cv_hv2,
+    ychange = unique(ychange)) |> 
+  mutate(size_ch = (mean_hv1-mean_hv2)/mean_hv1) |> 
   group_by(site) |>
   nest() |> 
   mutate(m_int = map(data, \(df)lm(size_ch~1, data = df)),
