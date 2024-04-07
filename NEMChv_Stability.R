@@ -42,6 +42,9 @@ ggplot(df_var, aes(ychange, mean, color = site))+
         legend.title = element_text(size = 14),
         strip.text.x = element_text(size = 14),
         legend.text = element_text(size = 12)) 
+ggsave('figs/centResp.png', 
+       units="in", width=10, height=6, dpi=600)
+
 ###within year comparison across sites 
 withiyear_acrosssite = read_csv("withinyear_acrosssites.csv")  %>%
   group_by(site1, site2, year) %>%
@@ -73,7 +76,7 @@ ggplot(withiyear_acrosssite, aes(year, mean, color = site1))+
 
 
 
-ggsave('hvDistYearly.png', 
+ggsave('figs/hvDistYearly.png', 
        units="in", width=10, height=6, dpi=600)
 
 # size 
