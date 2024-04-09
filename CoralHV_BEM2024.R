@@ -28,7 +28,7 @@ rename(site= SITE.NAME) |>
   filter(pc > 0) 
 
 # make the hvs for random cover and avg traits----
-reps = 100
+reps = 1
 
 set.seed(14)
 df = df_ben |> 
@@ -64,14 +64,25 @@ df = df_ben |>
          centroid = map(hv, \(hv) get_centroid(hv)))
 
 
-saveRDS(df, 'G:/R_analysis/NEMC_hvs_randCov_avgTr_.rds')
+#saveRDS(df, 'G:/R_analysis/NEMC_hvs_randCov_avgTr_.rds')
+
+
 
 ###saving all the Hypervolumes 
 
 df |> 
   select(YEAR, site,i, hv_size, centroid) |> 
   unnest_wider(centroid) |> 
-  write_csv('hvALL.csv')
+  #write_csv('hvALL.csv')
+  
+####d PLOT FOR VISUALIZING '
+df_1 <- df %>%
+  filter(YEAR == 2016) %>%
+  select(YEAR, site, hv)
+
+plot(df,pairplot=false,
+     show.3d=TRUE)
+
 
 # will be too big for github
 
