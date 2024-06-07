@@ -34,13 +34,13 @@ set.seed(14)
 df = df_ben |> 
   left_join(df_tr, by = 'species') |> 
   slice(rep(1:n(), each=reps))|> 
-  mutate(i = rep(1:reps, times=nrow(df_ben)),
-         percentcover = truncnorm::rtruncnorm(1, a = 0.001, b = 100,
-                                              mean = pc, sd = pc_sd),
+  mutate(i = rep(1:reps, times=nrow(df_ben)), ###creates iteration  "I want 100 replicated of each line from _ dataset; and then give me 1-100 of the number of times we replicated that thing" 
+         percentcover = truncnorm::rtruncnorm(1, a = 0.001, b = 100, ### create a percent cover using trunchnorm package
+                                              mean = pc, sd = pc_sd), ##a=lowest value, b=upper, mean and SD 
          # `chlorophyll a` = truncnorm::rtruncnorm(1,
          #                                              mean = `mean_chlorophyll a`,
          #                                              sd = `sd2_chlorophyll a`),
-         `corallite diameter` = `mean_corallite diameter`,
+         `corallite diameter` = `mean_corallite diameter`,  ###creating a random percent cover based on the mean and standard deviation for each iteration and species 
          `growth rate` = `mean_growth rate`,
          `skeletal density` = `mean_skeletal density`,
          `symbiodinium density` = `mean_symbiodinium density`,
@@ -49,7 +49,7 @@ df = df_ben |>
   group_by(i) |> 
   mutate(across(`corallite diameter`:`colony maximum diameter`, scale)) |> 
   group_by(YEAR, i, site) |> 
-  nest(weight = percentcover, data = `corallite diameter`:`colony maximum diameter`) |> 
+  nest(weight = percentcover, data = `corallite diameter`:`colony maximum diameter`) |> ####2 nested columns: each site with each iteration weighted
   mutate(hv = map2(data,weight, \(data,weight) hypervolume_gaussian(data, 
                                                                     name = paste(YEAR,site,i,sep = '_'),
                                                                     weight = weight$percentcover,
@@ -275,15 +275,5 @@ joined <- bind_rows(ov_2016, ov_2018, ov_2021, ov_2023)
 #saveRDS(df_ov, "data/site_ov.rds")
 write_csv(joined, "withinyear_acrosssites.csv")
 
-################################################################
-
-
-
-df_avg = df_ov |> 
-  group_by(YEAR1,YEAR2) |>
-  summarize(across(hv1_size:dist_cent, mean))
-
-ggplot(df_avg, aes(YEAR1, YEAR2, fill = sorensen))+
-  geom_tile()+
-  scale_fill_viridis(limits = c(0,1))
+####refer to NEMChv_Stability.R for plots within and between sites 
 
