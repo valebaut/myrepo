@@ -28,7 +28,7 @@ rename(site= SITE.NAME) |>
   filter(pc > 0) 
 
 # make the hvs for random cover and avg traits----
-reps = 1
+reps = 1    ###remeber to change to mimimally 100 reps 
 
 set.seed(14)
 df = df_ben |> 
@@ -90,7 +90,7 @@ plot(df,pairplot=false,
 # ggplot(df, aes(YEAR, hv_size))+
 #   geom_boxplot()
 
-##############SITES OVER TIME 
+##############SITES OVER TIME#####################
 df_y= tibble(y1 = unique(df$YEAR),
              y2 = unique(df$YEAR)) |> 
   expand(y1,y2)
