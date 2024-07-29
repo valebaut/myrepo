@@ -2,99 +2,93 @@ library(funspace)
 library(tidyverse)
 library(dplyr)
 library(readxl)
-df_tr = read_excel('C:/Users/valeb/OneDrive - Florida International University/data_species/CoralFunctionalTraits_PR.xlsx') |>
-  filter(trait_name %in% c("Skeletal density","Growth rate", "Corallite diameter", "Colony maximum diameter", "Symbiodinium density")) |> 
-  mutate(specie_name = str_trim(specie_name),
-         trait_name=str_trim(trait_name),
-         trait_name=tolower(trait_name),
-         value=as.numeric(value))  |> 
-  mutate(standard_unit = ifelse(trait_name == "skeletal density" & standard_unit == "gCaCO3 cm^-3", "g cm^-3", standard_unit),
-         standard_unit = ifelse(trait_name == "skeletal density" & standard_unit == "g CaCO3 cm^-3", "g cm^-3", standard_unit),
-         # ^ changing unit only (value stay the same) 
-         value = ifelse(trait_name == "growth rate" & standard_unit == "mm d^-1", value * 365, value),
-         standard_unit = ifelse(trait_name == "growth rate" & standard_unit == "mm d^-1", "mm yr^-1", standard_unit),
-         # ^ changing value and standard unit for mm/day  -> mm/year
-         value = ifelse(trait_name == "growth rate" & standard_unit == "mm month^-1", value * 12, value),
-         standard_unit = ifelse(trait_name == "growth rate" & standard_unit == "mm month^-1", "mm yr^-1", standard_unit),
-         # ^ changing value and standard unit for mm/month -> mm/year
-         standard_unit = ifelse(trait_name == "growth rate" & standard_unit == "mm yr", "mm yr^-1", standard_unit),
-         # ^ changing unit only (value stay the same)
-         value = ifelse(trait_name == "growth rate" & standard_unit == "cm yr", value * 10, value), 
-         standard_unit = ifelse(trait_name == "growth rate" & standard_unit == "cm yr", "mm yr^-1", standard_unit),
-         # ^ changing value and standard unit for cm/year -> mm/year
-         value = ifelse(trait_name == "colony maximum diameter"  & standard_unit == "mm", value/10, value),
-         standard_unit = ifelse(trait_name == "colony maximum diameter"  & standard_unit == "mm", "cm"  , standard_unit),
-         # ^ changing value and standard unit for  "mm" -> "cm"
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "mg cm^-2 d^-1", value*0.365, value),
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "mg cm^-2 d^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for mg/cm^2/day -> g/cm^2/yr 
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "kg m^-2 year^-1", value/10, value),
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "kg m^-2 year^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for kg/m^2/yr -> g/cm^2/yr 
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "mg CaCO3 cm^-2 d^-1", value*0.365, value),
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "mg CaCO3 cm^-2 d^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for mg CaCO3/cm^2/day -> g/cm^2/yr 
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "g CaCO3 cm^-2 yr^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing unit only  (value stay the same)
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "gCaCO3 cm^-2 yr^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing unit only  (value stay the same)
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "kg CaCO3 m^-2", value/10, value), # I looked at primary literature, correct measurement is kg CaCO3/m^2/yr, year was not recorded on excel sheet (oops)
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "kg CaCO3 m^-2", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for kg CaCO3/m^2/yr -> g/cm^2/yr 
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "mmol CaCO3 m^-2 h^-1", value*0.08767884, value), 
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "mmol CaCO3 m^-2 h^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for mmol CaCO3/m^2/hr -> g/cm^2/yr
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "g cm ^-2 yr^-1", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing unit only  (value stay the same)
-         # value = ifelse(trait_name == "calcification rate" & standard_unit == "mg CaCO3/cm^2/day", value*0.365, value),
-         # standard_unit = ifelse(trait_name == "calcification rate" & standard_unit == "mg CaCO3/cm^2/day", "g cm^-2 yr^-1", standard_unit),
-         # # ^ changing value and standard unit for mg CaCO3/cm^2/day -> g/cm^2/yr) 
-         value = ifelse(trait_name == "symbiodinium density"  & standard_unit == "cells x 10^6 cm^-2", value/1e6, value),
-         standard_unit = ifelse(trait_name == "symbiodinium density"  & standard_unit == "cells x 10^6 cm^-2", "cm^-2"   , standard_unit),
-         # ^ changing value and standard unit for  "cells x 10^6 cm^-2" -> "cm^-2"
-         # value = ifelse(trait_name == "chlorophyll a"  & standard_unit == "mg m^-2", value*0.1, value),
-         # standard_unit = ifelse(trait_name == "chlorophyll a"  & standard_unit == "mg m^-2", "µg cm^-2"  , standard_unit),
-         # # ^ changing value and standard unit for  "mg m^-2" -> "µg cm^-2"
-  ) |> 
-  filter(!(standard_unit %in% c("cm^2/month","g CaCO3 cm^-2", "% wt. gain month-1","Âµm cm^-2 h^-1"))) |> 
-  select(specie_name, trait_name, value) |> 
-  group_by(specie_name, trait_name) |> 
-  summarize(mean = mean(value, na.rm = T),
-            sd = sd(value, na.rm = T)) |> 
-  group_by(specie_name) |> 
-  mutate(sd2 = if_else(is.na(sd), mean(sd, na.rm = T), sd)) |> 
-  ungroup() |> 
-  select(-sd) |>
-  pivot_wider(names_from = trait_name, values_from = c(mean, sd2))
+library(phytools)
+library(ape)
+library(phangorn)
 
+# Read and process data
+data.aux <- read_excel('C:/Users/valeb/OneDrive - Florida International University/data_species/CoralFunctionalTraits_PR.xlsx') %>%
+  filter(trait_name %in% c("Skeletal density", "Growth rate", "Corallite diameter", "Colony maximum diameter", "Symbiodinium density")) %>%
+  mutate(
+    specie_name = str_trim(specie_name),
+    trait_name = str_trim(trait_name) %>% tolower(),
+    value = as.numeric(value)
+  ) %>%
+  mutate(
+    standard_unit = case_when(
+      trait_name == "skeletal density" & standard_unit %in% c("gCaCO3 cm^-3", "g CaCO3 cm^-3") ~ "g cm^-3",
+      trait_name == "growth rate" & standard_unit == "mm d^-1" ~ "mm yr^-1",
+      trait_name == "growth rate" & standard_unit == "mm month^-1" ~ "mm yr^-1",
+      trait_name == "growth rate" & standard_unit == "mm yr" ~ "mm yr^-1",
+      trait_name == "growth rate" & standard_unit == "cm yr" ~ "mm yr^-1",
+      trait_name == "colony maximum diameter" & standard_unit == "mm" ~ "cm",
+      trait_name == "symbiodinium density" & standard_unit == "cells x 10^6 cm^-2" ~ "cm^-2",
+      TRUE ~ standard_unit
+    ),
+    value = case_when(
+      trait_name == "growth rate" & standard_unit %in% c("mm d^-1", "mm month^-1") ~ value * ifelse(standard_unit == "mm d^-1", 365, 12),
+      trait_name == "growth rate" & standard_unit == "cm yr" ~ value * 10,
+      trait_name == "colony maximum diameter" & standard_unit == "mm" ~ value / 10,
+      trait_name == "symbiodinium density" & standard_unit == "cells x 10^6 cm^-2" ~ value / 1e6,
+      TRUE ~ value
+    )
+  ) %>%
+  filter(!(standard_unit %in% c("cm^2/month", "g CaCO3 cm^-2", "% wt. gain month-1", "Âµm cm^-2 h^-1"))) %>%
+  select(specie_name, trait_name, value) %>%
+  group_by(specie_name, trait_name) %>%
+  summarize(mean = mean(value, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = trait_name, values_from = mean) %>%
+  mutate(specie_name = gsub(" ", "_", specie_name)) |>  
+  mutate(across(2:6, ~ scale(log(.)), .names = "scaled_{col}")) |>  ##Scale and log transform 
+  select(specie_name, starts_with("scaled_"))
   
-# Log10-transform the trait values (excluding the species column)
-log_traits <- as.data.frame(lapply(df_tr[,-1], function(x) log10(x)))
 
-# Scale the log10-transformed trait values
-scaled_traits <- as.data.frame(scale(log_traits))
+##Adding phylogeny tree from Huang and Roy (2015) adapted by Carturan et al., (2021). File in Carturan Github.  
+
+multi.phylo.tree<-read.tree("C:/Users/valeb/OneDrive - Florida International University/GitHubRep/PhylogeneticTree/supertree_names_validated_1000_798sp.tre")
+
+print(class(multi.phylo.tree))  # Should be "multiPhylo"
+print(length(multi.phylo.tree))  # Number of trees in the list
 
 
-# Combine the species column with the scaled trait values
-scaled_traits <- cbind(df_tr[,1], scaled_traits)
-colnames(scaled_traits)[1] <- colnames(df_tr)[1]
+# Define the species list from your data
+data_species <- unique(data.aux$specie_name)
 
-##load phylo tree 
-phylo.tree<- funspace::phylo
+# Function to find the best-matching tree
+find_best_matching_tree <- function(trees, species_list) {
+  best_tree <- NULL
+  max_matches <- 0
+  
+  for (i in seq_along(trees)) {
+    tree_species <- trees[[i]]$tip.label
+    matches <- sum(species_list %in% tree_species)
+    
+    if (matches > max_matches) {
+      best_tree <- trees[[i]]
+      max_matches <- matches
+    }
+  }
+  
+  return(best_tree)
+}
 
-coral_species <- phylo.tree$tip.label
-print(class(coral_species))
+# Find the best-matching tree
+phylo.tree <- find_best_matching_tree(multi.phylo.tree, data_species)
+##check structure 
+print(length(phylo.tree))
+class(phylo.tree)
 
-missing_in_tree <- setdiff(coral_species, scaled_traits)
-missing_in_data <- setdiff(scaled_traits, coral_species)
+##structuring the trait data this way to remove species as a "column" 
+data.aux <- column_to_rownames(data.aux, var = "specie_name")
 
-print("Species Missing in Tree:")
-print(missing_in_tree)
+##funspace package function combining phylogenetic tree and trait data with missing values 
+traitinput<- impute(traits= data.aux,phylo= phylo.tree, addingSpecies=TRUE)
 
-print("Species Missing in Data:")
-print(missing_in_data)
+# Convert each element to a data frame
+df_imputted <- as.data.frame(traitinput[[1]])
+df_Original_Eigenvectors <- as.data.frame(traitinput[[2]])
 
-df_imputed <- impute(traits = scaled_traits, phylo = phylo.tree, addingSpecies = TRUE)
+
 
 
 
